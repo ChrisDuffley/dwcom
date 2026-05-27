@@ -85,7 +85,7 @@ def prittifyName(userid, userinfo):
     return name
 
 def prittifyEvent(server, event):
-    output = f'{server.shortname} -'
+    output = f'{server.shortname} - '
     userid = getEventUserId(event)
     destuserid = None
     if 'destuserid' in event.parms:
@@ -108,17 +108,17 @@ def prittifyEvent(server, event):
         case 'adduser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
-            output += f' {userTypeString} {prittyName} joined channel {channelName}'
+            output += f'{prittyName} joined {channelName}'
         case 'removeuser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
-            output += f' {userTypeString} {prittyName} left channel {channelName}'
+            output += f'{prittyName} left channel {channelName}'
         case 'updateuser':
             statusMSG = event.parms.statusmsg if 'statusmsg' in event.parms else ''
             nickname = event.parms.nickname
             statusMode = event.parms.statusmode
             if statusMode in ('0', '4096', '256'):
-                statusMode = 'available'
+                statusMode = 'active'
             elif statusMode in ('1', '4097', '257'):
                 statusMode = 'away'
             elif statusMode in ('2', '4098', '258'):
@@ -127,13 +127,16 @@ def prittifyEvent(server, event):
                 statusMode = 'streaming media'
             else:
                 statusMode = f'unknown status{statusMode}'
-            output += f'{prittyName} -'
+            output += f'{prittyName}: '
             if userinfo.get('statusmode', 0) != event.parms.statusmode:
-                output += f' Status set to {statusMode}.'
+                output += f'Status {statusMode}. '
             if userinfo.get('statusmsg', '') != statusMSG:
-                output += f' Status message set to {event.parms.statusmsg}.'
+                if statusMSG == "":
+                    output += 'Status message cleared'
+                else:
+                    output += f'Status message {event.parms.statusmsg}'
             if userinfo.get('nickname') != nickname:
-                output += f' Nickname set to {nickname}.'
+                output += f'Nickname set to {nickname}.'
         case 'addfile':         
             fileName = event.parms.filename if 'filename' in event.parms else 'unknown file'
             owner = event.parms.owner
