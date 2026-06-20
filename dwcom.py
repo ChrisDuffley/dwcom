@@ -12,7 +12,7 @@ from prism import lib as prismLib
 from logger import getServerLogger
 from fileRandomizer import getRandomLine
 from audio.manager import Manager as AudioManager
-from config import Config
+from config import get_or_create
 import atexit
 
 try:
@@ -22,7 +22,7 @@ except DeviceNotFoundError:
     print('Cyal was unable to locate devices on your system, sounds will be unavailable.')
     CyalInitialized = False
 
-config = Config()
+config = get_or_create()
 speechContext = None
 
 serverCaches = {}
@@ -106,11 +106,11 @@ def prittifyEvent(server, event):
         case 'loggedin':
             loginMessage = 'logged in'
             if os.path.exists('text/logins.txt'):  loginMessage = getRandomLine('text/logins.txt')
-            output += f' {userTypeString} {prittyName} {loginMessage}'
+            output += f'{userTypeString} {prittyName} {loginMessage}'
         case 'loggedout':
             logOutMessage = 'logged out'
             if os.path.exists('text/logouts.txt'):  logOutMessage = getRandomLine('text/logouts.txt')
-            output += f' {userTypeString} {prittyName} {logOutMessage}'
+            output += f'{userTypeString} {prittyName} {logOutMessage}'
         case 'adduser':
             channelName= server.channelname(event.parms.chanid)
             channelName = channelName if 'the root channel' not in channelName.lower() else 'root'
@@ -168,7 +168,7 @@ def prittifyEvent(server, event):
                 if 'chanid' not in event.parms: output += f'Kicked from server: multiple logins disallowed'
                 else: output += f'Kicked from channel with id {event.parms.chanid}: channel deleted'
                 return output
-            if 'chanid' in event.parms: output += f'Kicked from channel {server.channelname(event.parms.chanid)} by {prittyName}'
+            if 'chanid' in event.parms: output += f' Kicked from channel {server.channelname(event.parms.chanid)} by {prittyName}'
             else: output += f'kicked from server by {prittyName}'
         case 'messagedeliver':
             messageType = str(event.parms.type)
@@ -382,7 +382,7 @@ class Trigger(TriggerBase):
             serverCaches[self.server.shortname]['channels'].pop(self.event.parms.chanid)
 
     def initializeCache(self):
-        if self.server.shortname  not in serverCaches: return
+        if self.server.shortname in serverCaches: return
         serverCaches[self.server.shortname] = {'users': {}, 'channels': {}}
         for u in self.server.users:
             u = self.server.users[u]

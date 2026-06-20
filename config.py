@@ -3,22 +3,36 @@ config class for dwcom
 """
 import atexit
 import os
-from threading import Thread
+import sys
+import types
 from conf import conf
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import weakref
+
+_STASH_KEY = '_dwcom_singleton_config'
+
+def get_or_create():
+    """Return the singleton Config instance, creating it on first call.
+    On plugin reload, the same observer keeps running and the config is refreshed.
+    """
+    stash = sys.modules.get(_STASH_KEY)
+    if stash is not None:
+        stash.instance.reloadConf()
+        return stash.instance
+    instance = Config()
+    stash = types.ModuleType(_STASH_KEY)
+    stash.instance = instance
+    sys.modules[_STASH_KEY] = stash
+    return instance
 
 class Config:
     def __init__(self):
         self.serverConfigs = conf.servers()
-        self.watcher = ConfigWatcher('ttcom.conf', weakref.WeakMethod(self.reloadConf))
+        self.watcher = ConfigWatcher('ttcom.conf', self.reloadConf)
         self.observer = Observer()
         self.observer.schedule(self.watcher, '.', recursive=False)
         self.observer.start()
-        self.observerThread = Thread(target=self.observer.join, daemon=True)
-        self.observerThread.start()
-        atexit.register(weakref.WeakMethod(self.close))
+        atexit.register(self.close)
 
     def get(self, serverName: str, itemName: str):
         serverConfig = self.serverConfigs.get(serverName)
@@ -42,7 +56,8 @@ class Config:
     def close(self):
         if self.observer.is_alive():
             self.observer.stop()
-            self.observer.join(timeout=1)
+            self.observer.join(timeout=2)
+        sys.modules.pop(_STASH_KEY, None)
 
     def __del__(self):
         self.close()
@@ -55,6 +70,4 @@ class ConfigWatcher(FileSystemEventHandler):
     def on_modified(self, event):
         if event.is_directory: return
         if os.path.abspath(event.src_path) != self.configPath: return
-        func = self.reloadFunc()
-        if func is not None:
-            func()
+        self.reloadFunc()
